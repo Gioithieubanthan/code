@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Công cụ Chia Subnet VLSM - Pure HTML/JS</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Awesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between font-sans antialiased selection:bg-blue-100 selection:text-blue-700">
+
+  <!-- Header Top -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="p-2.5 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-500/20">
+          <i class="fa-solid fa-network-wired text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 tracking-tight leading-tight sm:text-xl">
+            Công cụ Chia Subnet VLSM
+          </h1>
+          <p class="text-xs text-slate-500 hidden sm:block">Variable Length Subnet Masking Calculator</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button 
+          onclick="resetToDefault()"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+          title="Đặt lại về mặc định"
+        >
+          <i class="fa-solid fa-rotate-right text-xs"></i>
+          <span class="hidden sm:inline">Khôi phục mặc định</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
+    
+    <!-- Top Grid: Configuration & Calculation Results -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- Left Column: Setup Cards -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- Network Setup Card -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex items-center space-x-2 mb-4">
+            <i class="fa-solid fa-server text-blue-600 text-base"></i>
+            <h2 class="text-base font-semibold text-slate-900">1. Cấu hình Mạng Gốc</h2>
+          </div>
+          
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              Địa chỉ Network / Prefix (CIDR)
+            </label>
+            <div class="relative">
+              <input
+                type="text"
+                id="networkInput"
+                value="192.168.1.0/24"
+                oninput="calculate()"
+                placeholder="VD: 192.168.1.0/24"
+                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-slate-900 font-mono text-sm transition"
+              />
+              <div class="absolute right-3 top-2.5 text-xs text-slate-400 font-mono">
+                IPv4
+              </div>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">
+              Nhập IP mạng chính đi kèm subnet mask ban đầu (VD: <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600 font-mono">10.0.0.0/16</code> hoặc <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600 font-mono">192.168.1.0/24</code>).
+            </p>
+          </div>
+        </div>
+
+        <!-- Subnets / Rooms Input Card -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-sitemap text-indigo-600 text-base"></i>
+              <h2 class="text-base font-semibold text-slate-900">
+                2. Danh sách Phòng Ban (<span id="roomCount">0</span>)
+              </h2>
+            </div>
+            <button
+              onclick="clearAllRooms()"
+              id="btnClearAll"
+              class="text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1 rounded-lg transition-colors inline-flex items-center gap-1 cursor-pointer"
+            >
+              <i class="fa-solid fa-trash-can"></i>
+              Xóa tất cả
+            </button>
+          </div>
+
+          <!-- Dynamic Room items list -->
+          <div id="roomContainer" class="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+            <!-- Rendered by JavaScript -->
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="mt-5 pt-4 border-t border-slate-100 flex items-center gap-3">
+            <button
+              onclick="addRoom()"
+              class="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl shadow-sm hover:shadow shadow-blue-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <i class="fa-solid fa-plus text-xs"></i>
+              Thêm phòng ban
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Calculation Output -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- Status & Results Card -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm hover:shadow-md transition-shadow">
+          
+          <!-- Card Header & Actions -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+            <div>
+              <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                Kết Quả Chia Subnet VLSM
+              </h2>
+              <p class="text-xs text-slate-500 mt-0.5">Tự động sắp xếp từ số nhu cầu Host lớn đến nhỏ</p>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                id="btnExportCSV"
+                onclick="exportCSV()"
+                class="hidden px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <i class="fa-solid fa-file-csv"></i>
+                Xuất File CSV
+              </button>
+              
+              <span id="badgeStatus" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                <i class="fa-solid fa-circle-info"></i>
+                Chưa tính toán
+              </span>
+            </div>
+          </div>
+
+          <!-- Status Alert Banner -->
+          <div id="alertBanner" class="hidden mt-4 p-4 rounded-xl text-sm flex items-start gap-3">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Utilization Summary Stats -->
+          <div id="statsSummary" class="hidden mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+              <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Host Yêu Cầu</div>
+              <div class="text-lg font-bold text-slate-800 mt-0.5"><span id="statAllocatedHosts">0</span> <span class="text-xs font-normal text-slate-500">hosts</span></div>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+              <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">IP Cấp Phát</div>
+              <div class="text-lg font-bold text-slate-800 mt-0.5"><span id="statUsedCapacity">0</span> <span class="text-xs font-normal text-slate-500">IPs</span></div>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+              <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">IP Còn Trống</div>
+              <div class="text-lg font-bold text-blue-600 mt-0.5"><span id="statRemainingIPs">0</span> <span class="text-xs font-normal text-slate-500">IPs</span></div>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+              <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Tỷ Lệ Sử Dụng</div>
+              <div class="text-lg font-bold text-indigo-600 mt-0.5"><span id="statUtilization">0</span>%</div>
+            </div>
+          </div>
+
+          <!-- Results Table Container -->
+          <div id="tableWrapper" class="hidden mt-5 overflow-x-auto rounded-xl border border-slate-200">
+            <table class="w-full text-left text-sm text-slate-700">
+              <thead class="bg-slate-100/80 text-xs font-semibold text-slate-600 uppercase border-b border-slate-200">
+                <tr>
+                  <th class="py-3 px-3">Phòng Ban</th>
+                  <th class="py-3 px-3 text-center">Yêu Cầu</th>
+                  <th class="py-3 px-3">Network IP / Prefix</th>
+                  <th class="py-3 px-3">Subnet Mask</th>
+                  <th class="py-3 px-3">Dải IP Khả Dụng</th>
+                  <th class="py-3 px-3">Broadcast IP</th>
+                  <th class="py-3 px-2 text-center">Sao Chép</th>
+                </tr>
+              </thead>
+              <tbody id="resultTableBody" class="divide-y divide-slate-200/70 font-mono text-xs">
+                <!-- Dynamically calculated subnets rows -->
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Bottom Grid: Algorithm Explanation and User Manual -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+      
+      <!-- Algorithm Explanation Card -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+        <div class="flex items-center space-x-2 mb-4 text-blue-600">
+          <i class="fa-solid fa-book-open text-base"></i>
+          <h3 class="text-base font-bold text-slate-900">Giải thích Thuật Toán VLSM</h3>
+        </div>
+        <div class="space-y-3 text-sm text-slate-600 leading-relaxed">
+          <p>
+            <strong>VLSM (Variable Length Subnet Mask)</strong> là kỹ thuật chia mạng con với mặt nạ độ dài linh hoạt, cho phép tối ưu hóa việc sử dụng địa chỉ IPv4 và hạn chế tối đa lãng phí không gian địa chỉ.
+          </p>
+          <ul class="list-disc pl-5 space-y-2 text-xs sm:text-sm text-slate-600">
+            <li>
+              <strong>Bước 1: Sắp xếp giảm dần:</strong> Sắp xếp các phòng ban theo nhu cầu Host giảm dần (từ phòng lớn nhất đến nhỏ nhất). Đây là nguyên tắc bắt buộc của VLSM.
+            </li>
+            <li>
+              <strong>Bước 2: Tính số bit Host (n):</strong> Tìm số bit <i>n</i> nhỏ nhất thỏa mãn công thức <code>2<sup>n</sup> - 2 &ge; Số Host yêu cầu</code>.
+              <span class="block text-slate-500 text-xs mt-0.5">(Đã tính thêm 2 địa chỉ bắt buộc dành riêng cho Network ID và Broadcast ID).</span>
+            </li>
+            <li>
+              <strong>Bước 3: Xác định Prefix (/CIDR):</strong> Prefix mạng con mới = <code>32 - n</code>. Subnet Mask tương ứng được chuyển đổi từ <code>32 - n</code> bit 1 liên tiếp.
+            </li>
+            <li>
+              <strong>Bước 4: Xác định Block Size:</strong> Kích thước dải IP <code>Block Size = 2<sup>n</sup></code>. Địa chỉ Broadcast = Network IP + <code>Block Size - 1</code>.
+            </li>
+            <li>
+              <strong>Bước 5: Chuyển sang subnet tiếp theo:</strong> Địa chỉ Network IP của subnet kế tiếp = Broadcast IP hiện tại + 1.
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- User Manual Card -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+        <div class="flex items-center space-x-2 mb-4 text-indigo-600">
+          <i class="fa-solid fa-circle-question text-base"></i>
+          <h3 class="text-base font-bold text-slate-900">Hướng Dẫn Sử Dụng & Tính Năng</h3>
+        </div>
+        <div class="space-y-3 text-sm text-slate-600 leading-relaxed">
+          <div class="flex items-start gap-2.5">
+            <span class="p-1 bg-blue-100 text-blue-700 rounded text-xs font-bold mt-0.5 w-5 h-5 flex items-center justify-center shrink-0">1</span>
+            <div>
+              <strong>Nhập dải IP mạng ban đầu:</strong> Điền Network IP và Prefix chính (ví dụ: <code class="bg-slate-100 px-1 py-0.5 rounded font-mono text-xs text-blue-600">192.168.1.0/24</code> hoặc <code class="bg-slate-100 px-1 py-0.5 rounded font-mono text-xs text-blue-600">10.0.0.0/16</code>).
+            </div>
+          </div>
+          <div class="flex items-start gap-2.5">
+            <span class="p-1 bg-blue-100 text-blue-700 rounded text-xs font-bold mt-0.5 w-5 h-5 flex items-center justify-center shrink-0">2</span>
+            <div>
+              <strong>Quản lý danh sách phòng ban:</strong> 
+              <ul class="list-disc pl-4 text-xs text-slate-500 mt-1 space-y-1">
+                <li>Nhấn <strong>"Thêm phòng ban"</strong> để tạo phân vùng mạng mới.</li>
+                <li>Chỉnh sửa trực tiếp Tên phòng hoặc Số host ngay trên từng ô nhập liệu.</li>
+                <li>Nhấn nút <strong>Kick / Xóa</strong> màu đỏ để loại bỏ 1 phòng cụ thể.</li>
+                <li>Nút <strong>"Xóa tất cả"</strong> dùng để xóa sạch toàn bộ danh sách phòng ban.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="flex items-start gap-2.5">
+            <span class="p-1 bg-blue-100 text-blue-700 rounded text-xs font-bold mt-0.5 w-5 h-5 flex items-center justify-center shrink-0">3</span>
+            <div>
+              <strong>Tự động chia & tính toán lại:</strong> Bất kỳ thao tác thêm, sửa, Kick/Xóa hay thay đổi dải IP đều kích hoạt tính toán lại VLSM ngay lập tức mà không cần bấm thêm nút.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer & Copyright Statement -->
+  <footer class="bg-white border-t border-slate-200 mt-12 py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+      <div class="flex items-center space-x-2">
+        <i class="fa-solid fa-user-gear text-blue-600"></i>
+        <span class="font-semibold text-slate-700">
+          Bản quyền & Phát triển bởi: <span class="text-blue-600 font-bold">Nguyễn Nam Hoàng</span>
+        </span>
+      </div>
+      <div>
+        © 2026 VLSM Subnet Calculator App • USE Tailwind CSS & JavaScript
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // State storage for rooms
+    let rooms = [
+      { id: 1, name: "Phòng Thực hành IT", hosts: 50 },
+      { id: 2, name: "Phòng Đào tạo", hosts: 25 },
+      { id: 3, name: "Phòng Hành chính", hosts: 10 },
+      { id: 4, name: "Phòng Giám đốc", hosts: 5 }
+    ];
+
+    let lastCalculatedSubnets = [];
+
+    // IP Utilities
+    function ipToInt(ip) {
+      return ip.split('.').reduce((acc, octet) => ((acc << 8) + parseInt(octet, 10)) >>> 0, 0);
+    }
+
+    function intToIp(int) {
+      return [
+        (int >>> 24) & 255,
+        (int >>> 16) & 255,
+        (int >>> 8) & 255,
+        int & 255
+      ].join('.');
+    }
+
+    function isValidIp(ip) {
+      const regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+      return regex.test(ip);
+    }
+
+    // Render room inputs
+    function renderRooms() {
+      const container = document.getElementById('roomContainer');
+      const countEl = document.getElementById('roomCount');
+      const btnClearAll = document.getElementById('btnClearAll');
+      
+      countEl.textContent = rooms.length;
+      
+      if (rooms.length === 0) {
+        btnClearAll.classList.add('hidden');
+        container.innerHTML = `
+          <div class="text-center py-8 border-2 border-dashed border-slate-200 rounded-xl">
+            <i class="fa-solid fa-circle-exclamation text-slate-300 text-2xl mb-2 block"></i>
+            <p class="text-sm font-medium text-slate-500">Chưa có phòng nào trong danh sách</p>
+            <p class="text-xs text-slate-400 mt-1">Nhấn nút bên dưới để thêm phòng ban mới</p>
+          </div>
+        `;
+        return;
+      }
+
+      btnClearAll.classList.remove('hidden');
+      container.innerHTML = rooms.map((room, index) => `
+        <div class="flex items-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/60 transition-all">
+          <span class="text-xs font-semibold text-slate-400 w-5 text-center">${index + 1}</span>
+          <input
+            type="text"
+            value="${escapeHtml(room.name)}"
+            oninput="updateRoom(${room.id}, 'name', this.value)"
+            placeholder="Tên phòng..."
+            class="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-slate-800"
+          />
+          <div class="w-28 relative">
+            <input
+              type="number"
+              value="${room.hosts}"
+              oninput="updateRoom(${room.id}, 'hosts', this.value)"
+              placeholder="Số host"
+              min="1"
+              class="w-full pl-3 pr-8 py-1.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-slate-800 font-mono text-right"
+            />
+            <span class="absolute right-2 top-2 text-[10px] text-slate-400 pointer-events-none">host</span>
+          </div>
+          <button
+            onclick="kickRoom(${room.id})"
+            class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+            title="Kick / Xóa phòng này"
+          >
+            <i class="fa-solid fa-trash-can text-sm"></i>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // Update room property and trigger calculate
+    function updateRoom(id, field, value) {
+      const room = rooms.find(r => r.id === id);
+      if (room) {
+        if (field === 'hosts') {
+          const val = parseInt(value, 10);
+          room.hosts = isNaN(val) ? 0 : Math.max(0, val);
+        } else {
+          room.name = value;
+        }
+        calculate();
+      }
+    }
+
+    // Add new room
+    function addRoom() {
+      const newId = Date.now();
+      rooms.push({
+        id: newId,
+        name: `Phòng mới ${rooms.length + 1}`,
+        hosts: 12
+      });
+      renderRooms();
+      calculate();
+    }
+
+    // Kick / Delete a room and automatically recalculate
+    function kickRoom(id) {
+      rooms = rooms.filter(r => r.id !== id);
+      renderRooms();
+      calculate();
+    }
+
+    // Clear all rooms and automatically recalculate
+    function clearAllRooms() {
+      rooms = [];
+      renderRooms();
+      calculate();
+    }
+
+    // Reset default state
+    function resetToDefault() {
+      document.getElementById('networkInput').value = '192.168.1.0/24';
+      rooms = [
+        { id: 1, name: "Phòng Thực hành IT", hosts: 50 },
+        { id: 2, name: "Phòng Đào tạo", hosts: 25 },
+        { id: 3, name: "Phòng Hành chính", hosts: 10 },
+        { id: 4, name: "Phòng Giám đốc", hosts: 5 }
+      ];
+      renderRooms();
+      calculate();
+    }
+
+    // Core Calculation Logic
+    function calculate() {
+      const networkInput = document.getElementById('networkInput').value.trim();
+      const alertBanner = document.getElementById('alertBanner');
+      const statsSummary = document.getElementById('statsSummary');
+      const tableWrapper = document.getElementById('tableWrapper');
+      const badgeStatus = document.getElementById('badgeStatus');
+      const btnExportCSV = document.getElementById('btnExportCSV');
+      const tbody = document.getElementById('resultTableBody');
+
+      // Reset views
+      alertBanner.classList.add('hidden');
+      alertBanner.className = "mt-4 p-4 rounded-xl text-sm flex items-start gap-3";
+      
+      // Basic validation
+      if (!networkInput.includes('/')) {
+        showError('Vui lòng nhập đúng định dạng Network/Prefix (VD: 192.168.1.0/24)');
+        return;
+      }
+
+      const [baseIpStr, prefixStr] = networkInput.split('/');
+      if (!isValidIp(baseIpStr)) {
+        showError('Địa chỉ IP không hợp lệ.');
+        return;
+      }
+
+      const basePrefix = parseInt(prefixStr, 10);
+      if (isNaN(basePrefix) || basePrefix < 0 || basePrefix > 30) {
+        showError('Prefix (/CIDR) phải nằm trong khoảng từ /0 đến /30.');
+        return;
+      }
+
+      if (rooms.length === 0) {
+        showInfo('Danh sách phòng ban hiện đang trống. Hãy bấm "Thêm phòng ban" để chia mạng!');
+        return;
+      }
+
+      const invalidRoom = rooms.find(r => !r.hosts || r.hosts <= 0);
+      if (invalidRoom) {
+        showError(`Phòng "${escapeHtml(invalidRoom.name)}" có số lượng host không hợp lệ (phải > 0).`);
+        return;
+      }
+
+      // VLSM Core Algorithm: Sort descending by hosts
+      const sortedRooms = [...rooms].sort((a, b) => b.hosts - a.hosts);
+
+      let currentIpInt = ipToInt(baseIpStr);
+      const baseBlockSize = Math.pow(2, 32 - basePrefix);
+      const networkEndInt = currentIpInt + baseBlockSize - 1;
+
+      const subnets = [];
+      let totalAllocatedHosts = 0;
+      let totalUsedCapacity = 0;
+
+      for (let i = 0; i < sortedRooms.length; i++) {
+        const room = sortedRooms[i];
+        const neededHostAddresses = room.hosts + 2; // +1 Network, +1 Broadcast
+        
+        const hostBits = Math.ceil(Math.log2(neededHostAddresses));
+        const actualHostBits = Math.max(hostBits, 2); // Minimum /30
+        const prefix = 32 - actualHostBits;
+
+        const blockSize = Math.pow(2, actualHostBits);
+        const netMaskInt = (~(blockSize - 1)) >>> 0;
+        const broadcastInt = currentIpInt + blockSize - 1;
+
+        if (broadcastInt > networkEndInt) {
+          showError(`Không đủ dung lượng dải mạng! Phòng "${escapeHtml(room.name)}" (${room.hosts} hosts) vượt quá giới hạn dải IP /${basePrefix} ban đầu.`);
+          return;
+        }
+
+        const usableHosts = blockSize - 2;
+
+        subnets.push({
+          id: room.id,
+          name: room.name,
+          requestedHosts: room.hosts,
+          usableHosts,
+          networkIp: intToIp(currentIpInt),
+          subnetMask: intToIp(netMaskInt),
+          prefix,
+          firstUsable: intToIp(currentIpInt + 1),
+          lastUsable: intToIp(broadcastInt - 1),
+          broadcastIp: intToIp(broadcastInt)
+        });
+
+        totalAllocatedHosts += room.hosts;
+        totalUsedCapacity += blockSize;
+
+        currentIpInt = broadcastInt + 1;
+      }
+
+      lastCalculatedSubnets = subnets;
+      const totalAvailableIPs = baseBlockSize;
+      const overallUtilization = Math.round((totalUsedCapacity / totalAvailableIPs) * 100);
+
+      // Render Statistics
+      document.getElementById('statAllocatedHosts').textContent = totalAllocatedHosts;
+      document.getElementById('statUsedCapacity').textContent = totalUsedCapacity;
+      document.getElementById('statRemainingIPs').textContent = totalAvailableIPs - totalUsedCapacity;
+      document.getElementById('statUtilization').textContent = overallUtilization;
+
+      // Render Subnets Table
+      tbody.innerHTML = subnets.map((s, idx) => `
+        <tr class="hover:bg-blue-50/40 transition-colors">
+          <td class="py-3 px-3 font-sans font-medium text-slate-900 text-xs whitespace-nowrap">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+              ${escapeHtml(s.name)}
+            </div>
+          </td>
+          <td class="py-3 px-3 text-center font-sans">
+            <span class="font-semibold text-slate-900">${s.requestedHosts}</span>
+            <span class="text-[10px] text-slate-400 block">(${s.usableHosts} max)</span>
+          </td>
+          <td class="py-3 px-3 text-blue-700 font-semibold whitespace-nowrap">
+            ${s.networkIp} <span class="text-slate-500 font-normal">/${s.prefix}</span>
+          </td>
+          <td class="py-3 px-3 text-slate-600 whitespace-nowrap">${s.subnetMask}</td>
+          <td class="py-3 px-3 text-emerald-700 font-medium whitespace-nowrap">
+            ${s.firstUsable} - ${s.lastUsable}
+          </td>
+          <td class="py-3 px-3 text-rose-600 whitespace-nowrap">${s.broadcastIp}</td>
+          <td class="py-3 px-2 text-center">
+            <button
+              onclick="copyToClipboard('${s.networkIp}/${s.prefix}', this)"
+              class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded transition-colors cursor-pointer"
+              title="Copy Network CIDR"
+            >
+              <i class="fa-solid fa-copy"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+
+      // Show results UI
+      statsSummary.classList.remove('hidden');
+      tableWrapper.classList.remove('hidden');
+      btnExportCSV.classList.remove('hidden');
+
+      badgeStatus.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800";
+      badgeStatus.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600"></i> Thành công`;
+
+      // Show success alert message
+      alertBanner.classList.remove('hidden');
+      alertBanner.classList.add('bg-emerald-50', 'border', 'border-emerald-200', 'text-emerald-800');
+      alertBanner.innerHTML = `
+        <i class="fa-solid fa-circle-check text-emerald-600 text-base shrink-0 mt-0.5"></i>
+        <div>
+          <strong>Chia VLSM thành công!</strong> Các subnet đã được sắp xếp tự động theo thứ tự nhu cầu host giảm dần.
+        </div>
+      `;
+    }
+
+    function showError(msg) {
+      const alertBanner = document.getElementById('alertBanner');
+      const statsSummary = document.getElementById('statsSummary');
+      const tableWrapper = document.getElementById('tableWrapper');
+      const badgeStatus = document.getElementById('badgeStatus');
+      const btnExportCSV = document.getElementById('btnExportCSV');
+
+      statsSummary.classList.add('hidden');
+      tableWrapper.classList.add('hidden');
+      btnExportCSV.classList.add('hidden');
+
+      badgeStatus.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-800";
+      badgeStatus.innerHTML = `<i class="fa-solid fa-circle-xmark text-rose-600"></i> Có lỗi`;
+
+      alertBanner.classList.remove('hidden');
+      alertBanner.classList.add('bg-rose-50', 'border', 'border-rose-200', 'text-rose-700');
+      alertBanner.innerHTML = `
+        <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base shrink-0 mt-0.5"></i>
+        <div>
+          <strong class="font-semibold">Không thể tính toán: </strong> ${msg}
+        </div>
+      `;
+    }
+
+    function showInfo(msg) {
+      const alertBanner = document.getElementById('alertBanner');
+      const statsSummary = document.getElementById('statsSummary');
+      const tableWrapper = document.getElementById('tableWrapper');
+      const badgeStatus = document.getElementById('badgeStatus');
+      const btnExportCSV = document.getElementById('btnExportCSV');
+
+      statsSummary.classList.add('hidden');
+      tableWrapper.classList.add('hidden');
+      btnExportCSV.classList.add('hidden');
+
+      badgeStatus.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600";
+      badgeStatus.innerHTML = `<i class="fa-solid fa-circle-info text-slate-500"></i> Trống`;
+
+      alertBanner.classList.remove('hidden');
+      alertBanner.classList.add('bg-slate-50', 'border', 'border-slate-200', 'text-slate-600');
+      alertBanner.innerHTML = `
+        <i class="fa-solid fa-circle-info text-slate-400 text-base shrink-0 mt-0.5"></i>
+        <div>${msg}</div>
+      `;
+    }
+
+    // Export result to CSV
+    function exportCSV() {
+      if (!lastCalculatedSubnets || lastCalculatedSubnets.length === 0) return;
+
+      const networkInput = document.getElementById('networkInput').value.trim();
+      const headers = ["Tên phòng", "Host yêu cầu", "Host đáp ứng", "Network IP", "Subnet Mask", "Prefix", "First Usable", "Last Usable", "Broadcast IP"];
+      const rows = lastCalculatedSubnets.map(s => [
+        `"${s.name}"`,
+        s.requestedHosts,
+        s.usableHosts,
+        s.networkIp,
+        s.subnetMask,
+        `/${s.prefix}`,
+        s.firstUsable,
+        s.lastUsable,
+        s.broadcastIp
+      ]);
+
+      const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `chia_vlsm_${networkInput.replace('/', '_')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Copy to Clipboard helper
+    function copyToClipboard(text, btnElement) {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+
+      // Visual Feedback
+      const originalHtml = btnElement.innerHTML;
+      btnElement.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i>`;
+      setTimeout(() => {
+        btnElement.innerHTML = originalHtml;
+      }, 1500);
+    }
+
+    // On Load Initialization
+    window.onload = function() {
+      renderRooms();
+      calculate();
+    };
+  </script>
+</body>
+</html>
